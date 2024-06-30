@@ -137,7 +137,6 @@ class LogicalReplicationReader:
         self.extractor = ExtractRaw(
             pipe_conn=self.pipe_in_conn, dsn=self.dsn, publication_name=self.publication_name, slot_name=self.slot_name
         )
-        self.extractor.connect()
         self.extractor.start()
         self.source_db_handler = SourceDBHandler(dsn=self.dsn)
         self.database = self.source_db_handler.conn.get_dsn_parameters()["dbname"]
@@ -357,6 +356,7 @@ class ExtractRaw(Process):
         self.conn.close()
 
     def run(self) -> None:
+        self.connect()
         replication_options = {"publication_names": self.publication_name, "proto_version": "1"}
         try:
             self.cur.start_replication(slot_name=self.slot_name, decode=False, options=replication_options)
