@@ -119,7 +119,7 @@ class LogicalReplicationReader:
         self.dsn = psycopg2.extensions.make_dsn(dsn=dsn, **kwargs)
         self.publication_name = publication_name
         self.slot_name = slot_name
-        self.start_lsn = kwargs.get(start_lsn)
+        self.start_lsn = kwargs.get("start_lsn")
 
         # transform data containers
         self.table_schemas: typing.Dict[int, TableSchema] = dict()  # map relid to table schema
@@ -357,6 +357,7 @@ class ExtractRaw(Process):
         self.publication_name = publication_name
         self.slot_name = slot_name
         self.pipe_conn = pipe_conn
+        self.start_lsn = start_lsn
 
     def connect(self) -> None:
         self.conn = psycopg2.extras.LogicalReplicationConnection(self.dsn)
@@ -370,9 +371,14 @@ class ExtractRaw(Process):
         self.connect()
         replication_options = {"publication_names": self.publication_name, "proto_version": "1"}
         try:
-            self.cur.start_replication(
-                slot_name=self.slot_name, decode=False, options=replication_options, start_lsn=self.start_lsn
-            )
+            if self.start_lsn is None:
+                self.cur.start_replication(
+                    slot_name=self.slot_name, decode=False, options=replication_options
+                )
+            else:
+                self.cur.start_replication(
+                    slot_name=self.slot_name, decode=False, options=replication_options, start_lsn=self.start_lsn
+                )
         except psycopg2.ProgrammingError:
             logger.warning(f"Expected slot '{self.slot_name}' to be present. Creating it now. Starting LSN will be '0/0'")
             self.cur.create_replication_slot(self.slot_name, output_plugin="pgoutput")
